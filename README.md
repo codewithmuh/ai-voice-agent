@@ -30,6 +30,9 @@ An AI-powered phone receptionist that answers calls 24/7, books appointments on 
                                  [Google Cal] [Twilio] [PostgreSQL]
 ```
 
+<img width="1487" height="814" alt="Screenshot 2026-03-05 at 3 11 53 AM" src="https://github.com/user-attachments/assets/7881f037-323b-4f09-b3ae-81ac2b04601d" />
+
+
 ## Quick Start
 
 ### 1. Clone and configure

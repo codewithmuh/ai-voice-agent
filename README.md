@@ -1,4 +1,5 @@
 # AI Voice Receptionist
+<img width="1352" height="813" alt="Screenshot 2026-03-05 at 3 09 41 AM" src="https://github.com/user-attachments/assets/8e631186-d932-4b36-bd09-c908c1e769a1" />
 
 An AI-powered phone receptionist that answers calls 24/7, books appointments on Google Calendar, and sends SMS confirmations — built with Claude Agent SDK, Django, Vapi, and PostgreSQL.
 

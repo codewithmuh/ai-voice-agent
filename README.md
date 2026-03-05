@@ -1,7 +1,7 @@
 # AI Voice Receptionist
-<img width="1352" height="813" alt="Screenshot 2026-03-05 at 3 09 41 AM" src="https://github.com/user-attachments/assets/8e631186-d932-4b36-bd09-c908c1e769a1" />
+<img width="1352" height="813" alt="Screenshot 2026-03-05 at 3 09 41 AM" src="https://github.com/user-attachments/assets/8e631186-d932-4b36-bd09-c908c1e769a1" />
 
-An AI-powered phone receptionist that answers calls 24/7, books appointments on Google Calendar, and sends SMS confirmations — built with Claude Agent SDK, Django, Vapi, and PostgreSQL.
+An AI-powered phone receptionist that answers calls 24/7, books appointments on Google Calendar, and sends SMS confirmations — built with Django, Claude AI, Vapi, and PostgreSQL.
 
 ## What It Does
 
@@ -9,29 +9,45 @@ An AI-powered phone receptionist that answers calls 24/7, books appointments on 
 - Checks Google Calendar availability in real time
 - Books appointments and creates calendar events
 - Sends SMS confirmations via Twilio
-- Logs every call to PostgreSQL with a Django admin dashboard
+- Logs every call and appointment to PostgreSQL with a Django admin dashboard
 
 ## Tech Stack
 
 | Component | Role |
 |-----------|------|
-| **Claude Agent SDK** | AI brain — processes conversation, decides actions, calls tools |
-| **Vapi** | Telephony — phone numbers, speech-to-text, text-to-speech |
-| **Django** | Backend server, webhook handler, admin panel |
-| **PostgreSQL** | Call logging and analytics |
+| **Django** | Backend brain — hosts Claude AI, tools, prompts, admin panel |
+| **Claude API (Anthropic)** | AI conversation engine — processes speech, decides actions, calls tools |
+| **Vapi** | Voice pipe — phone numbers, speech-to-text, text-to-speech only |
+| **PostgreSQL** | Call logs and appointment records |
 | **Google Calendar API** | Appointment availability and booking |
 | **Twilio** | SMS confirmations |
 
 ## Architecture
 
+Vapi is used **only** as a voice transport layer (STT/TTS). All AI logic, tools, and prompts live in Django.
+
 ```
-[Phone Call] → [Vapi: STT/TTS] ↔ [Django + Claude Agent SDK]
-                                        |        |        |
-                                 [Google Cal] [Twilio] [PostgreSQL]
+[Phone Call] → [Vapi: STT only] → [Django Custom LLM Endpoint]
+                                          ↓
+                                   [Claude AI + Tools]
+                                    ↙     ↓      ↘
+                            [Google Cal] [Twilio] [PostgreSQL]
+                                          ↓
+                                   [Django Response]
+                                          ↓
+                              [Vapi: TTS only] → [Caller hears response]
 ```
 
-<img width="1487" height="814" alt="Screenshot 2026-03-05 at 3 11 53 AM" src="https://github.com/user-attachments/assets/7881f037-323b-4f09-b3ae-81ac2b04601d" />
+<img width="1487" height="814" alt="Screenshot 2026-03-05 at 3 11 53 AM" src="https://github.com/user-attachments/assets/7881f037-323b-4f09-b3ae-81ac2b04601d" />
 
+### How It Works
+
+1. Caller dials the phone number (via Vapi)
+2. Vapi converts speech to text and sends it to Django's `/api/vapi/chat/completions/` endpoint
+3. Django calls Claude API with the system prompt and tool definitions
+4. Claude decides what to do — check calendar, book appointment, send SMS, etc.
+5. Django executes tools locally and returns the final response to Vapi
+6. Vapi converts the text response back to speech for the caller
 
 ## Quick Start
 
@@ -55,6 +71,15 @@ Paste the output into your `.env` file as the `SECRET_KEY` value.
 
 ```
 SECRET_KEY=your-generated-secret-key
+DEBUG=True
+ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0,*
+
+DB_NAME=ai_receptionist
+DB_USER=postgres
+DB_PASSWORD=postgres
+DB_HOST=db
+DB_PORT=5432
+
 ANTHROPIC_API_KEY=sk-ant-...
 VAPI_API_KEY=...
 GOOGLE_CALENDAR_CREDENTIALS=google-calendar-credentials.json
@@ -93,7 +118,7 @@ mv ~/Downloads/your-downloaded-file.json ./google-calendar-credentials.json
 
 #### Step 4: Get your Calendar ID
 1. Open [Google Calendar](https://calendar.google.com)
-2. Click the **gear icon (⚙️)** in the top-right → **Settings**
+2. Click the **gear icon** in the top-right → **Settings**
 3. Under **Settings for my calendars** on the left, click the calendar you want
 4. Click **Integrate calendar** — the **Calendar ID** is displayed there
 5. For your default calendar, the Calendar ID is simply your Gmail address (e.g., `you@gmail.com`)
@@ -125,8 +150,15 @@ docker compose exec web python manage.py createsuperuser
 ### 7. Verify it works
 
 ```bash
+# Test the webhook endpoint
 curl http://localhost:8000/api/vapi/webhook/
 # Returns: {"status": "ok", "service": "AI Voice Receptionist"}
+
+# Test the custom LLM endpoint
+curl -X POST http://localhost:8000/api/vapi/chat/completions/ \
+  -H "Content-Type: application/json" \
+  -d '{"messages":[{"role":"user","content":"Hi, I want to book an appointment"}]}'
+# Returns an OpenAI-format response with Claude's reply
 ```
 
 ### 8. Expose with ngrok
@@ -151,12 +183,19 @@ Copy the `https://...ngrok-free.app` URL from the output.
 ### 9. Connect Vapi
 
 1. Go to [Vapi Dashboard](https://dashboard.vapi.ai)
-2. Create or select an Assistant → set the **Server URL** to:
+2. Create an Assistant
+3. Set the **Model** to `Custom LLM` with the URL:
+   ```
+   https://your-ngrok-url.ngrok-free.app/api/vapi/chat/completions/
+   ```
+4. Set the **Server URL** (for end-of-call reports) to:
    ```
    https://your-ngrok-url.ngrok-free.app/api/vapi/webhook/
    ```
-3. Buy a phone number and assign it to the assistant
-4. Call the number to test
+5. Buy or import a phone number and assign it to the assistant
+6. Call the number to test (or use the web call button in the Vapi dashboard)
+
+> **Important:** The Custom LLM URL is where Vapi sends conversation messages. Django calls Claude, runs tools, and returns the response. Vapi only handles voice (STT/TTS).
 
 ## Project Structure
 
@@ -166,13 +205,14 @@ ai-voice-agent/
 │   ├── settings.py              # Django config
 │   └── urls.py                  # URL routing
 ├── calls/
-│   ├── models.py                # CallLog model
-│   ├── views.py                 # Vapi webhook endpoint
+│   ├── models.py                # CallLog + Appointment models
+│   ├── views.py                 # Custom LLM endpoint + Vapi webhook
+│   ├── urls.py                  # API routes
 │   ├── admin.py                 # Django admin registration
 │   ├── agent/
 │   │   ├── receptionist.py      # Claude agentic loop (the brain)
-│   │   ├── tools.py             # 4 tool definitions
-│   │   └── prompts.py           # System prompt
+│   │   ├── tools.py             # Tool definitions (calendar, SMS, DB)
+│   │   └── prompts.py           # System prompt (Bright Smile Dental)
 │   └── services/
 │       ├── calendar.py          # Google Calendar API
 │       ├── sms.py               # Twilio SMS
@@ -183,13 +223,22 @@ ai-voice-agent/
 └── requirements.txt
 ```
 
+### Key Endpoints
+
+| Endpoint | Purpose |
+|----------|---------|
+| `POST /api/vapi/chat/completions/` | Custom LLM — receives messages from Vapi, calls Claude + tools, returns response |
+| `POST /api/vapi/webhook/` | Webhook — receives end-of-call reports, logs calls to DB |
+| `GET /api/vapi/webhook/` | Health check |
+
 ## Django Admin
 
 Access the admin panel at `http://localhost:8000/admin/` to:
-- View all call logs (caller phone, duration, timestamp)
+- View all call logs (caller phone, duration, summary, timestamp)
+- View all booked appointments (patient name, date, time, type)
 - Filter calls by date and booking status
-- Search by phone number
-- See which calls resulted in booked appointments
+- Filter appointments by type and date
+- Search by phone number or patient name
 
 ## Deploy to Production
 
@@ -200,7 +249,7 @@ railway add --plugin postgresql
 railway up
 ```
 
-Set your environment variables in the Railway dashboard, then update the Vapi Server URL to your Railway domain.
+Set your environment variables in the Railway dashboard, then update the Vapi Custom LLM URL and Server URL to your Railway domain.
 
 ## License
 

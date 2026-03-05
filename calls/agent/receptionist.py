@@ -30,7 +30,11 @@ def handle_conversation_turn(conversation_history: list) -> str:
             break
 
         logger.info(f"[TOOL] {tool_block.name} {json.dumps(tool_block.input)}")
-        tool_result = execute_tool(tool_block.name, tool_block.input)
+        try:
+            tool_result = execute_tool(tool_block.name, tool_block.input)
+        except Exception as e:
+            logger.error(f"[TOOL ERROR] {tool_block.name}: {e}")
+            tool_result = {"error": str(e)}
         logger.info(f"[RESULT] {json.dumps(tool_result)}")
 
         conversation_history.append(

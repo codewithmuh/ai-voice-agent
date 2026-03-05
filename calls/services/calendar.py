@@ -64,6 +64,8 @@ def check_availability(date: str) -> dict:
 
 
 def book_appointment(details: dict) -> dict:
+    from ..models import Appointment
+
     service = get_calendar_service()
     calendar_id = get_calendar_id()
 
@@ -84,6 +86,18 @@ def book_appointment(details: dict) -> dict:
         )
         .execute()
     )
+
+    # Save appointment to database
+    Appointment.objects.create(
+        patient_name=details["patient_name"],
+        patient_phone=details["patient_phone"],
+        appointment_type=details["appointment_type"],
+        date=details["date"],
+        time=details["time"],
+        duration_minutes=duration,
+        google_event_id=event["id"],
+    )
+    logger.info(f"[BOOKED] {details['patient_name']} on {details['date']} at {details['time']}")
 
     return {
         "success": True,

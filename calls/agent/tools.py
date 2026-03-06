@@ -58,4 +58,18 @@ TOOLS = [
             "required": ["caller_phone", "call_summary", "appointment_booked"],
         },
     },
+    {
+        "name": "end_call",
+        "description": "End the phone call. Use this after saying goodbye to the caller so the call disconnects automatically.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "reason": {
+                    "type": "string",
+                    "description": "Why the call is ending, e.g. 'booking_complete', 'caller_goodbye', 'no_further_questions'",
+                },
+            },
+            "required": ["reason"],
+        },
+    },
 ]

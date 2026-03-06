@@ -46,6 +46,18 @@ def chat_completions(request):
     messages = data.get("messages", [])
     logger.info(f"[CUSTOM LLM] Received {len(messages)} messages")
 
+    # Extract caller phone from VAPI call metadata or request
+    caller_phone = None
+    call_data = data.get("call", {})
+    if call_data:
+        caller_phone = call_data.get("customer", {}).get("number")
+    # Fallback: check metadata
+    if not caller_phone:
+        metadata = data.get("metadata", {})
+        caller_phone = metadata.get("customerNumber")
+    if caller_phone:
+        logger.info(f"[CUSTOM LLM] Caller phone: {caller_phone}")
+
     if not messages:
         return JsonResponse({"error": "No messages provided"}, status=400)
 
@@ -72,15 +84,18 @@ def chat_completions(request):
 
     try:
         # Run the full agentic loop (Claude + tools)
-        response_text = handle_conversation_turn(fixed_messages)
-        logger.info(f"[CUSTOM LLM] Claude response: {response_text[:100]}...")
+        result = handle_conversation_turn(fixed_messages, caller_phone=caller_phone)
+        response_text = result["text"]
+        end_call = result["end_call"]
+        logger.info(f"[CUSTOM LLM] Claude response: {response_text[:100]}... end_call={end_call}")
     except Exception as e:
         logger.error(f"[CUSTOM LLM ERROR] {e}")
         response_text = "I'm sorry, I'm having a technical issue right now. Please try calling back in a moment."
+        end_call = False
 
     # Check if streaming was requested
     if data.get("stream", False):
-        return _stream_response(response_text)
+        return _stream_response(response_text, end_call)
 
     # Return in OpenAI chat completions format
     return JsonResponse({
@@ -106,7 +121,7 @@ def chat_completions(request):
     })
 
 
-def _stream_response(text: str):
+def _stream_response(text: str, end_call: bool = False):
     """Return a streaming response in OpenAI SSE format."""
     completion_id = f"chatcmpl-{uuid.uuid4().hex[:12]}"
 
@@ -144,10 +159,16 @@ def _stream_response(text: str):
         yield f"data: {json.dumps(stop_chunk)}\n\n"
         yield "data: [DONE]\n\n"
 
-    return StreamingHttpResponse(
+    response = StreamingHttpResponse(
         event_stream(),
         content_type="text/event-stream",
     )
+
+    # Signal VAPI to end the call after this response
+    if end_call:
+        response["X-Vapi-End-Call"] = "true"
+
+    return response
 
 
 @csrf_exempt

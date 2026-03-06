@@ -73,6 +73,28 @@ def book_appointment(details: dict) -> dict:
     start = datetime.fromisoformat(f"{details['date']}T{details['time']}:00")
     end = start + timedelta(minutes=duration)
 
+    # Check for existing bookings at this slot to prevent duplicates
+    existing = (
+        service.events()
+        .list(
+            calendarId=calendar_id,
+            timeMin=start.isoformat() + "Z",
+            timeMax=end.isoformat() + "Z",
+            singleEvents=True,
+        )
+        .execute()
+    )
+    if existing.get("items"):
+        existing_event = existing["items"][0]
+        logger.info(f"[DUPLICATE] Slot already booked at {details['date']} {details['time']}")
+        return {
+            "success": True,
+            "event_id": existing_event["id"],
+            "start": start.isoformat(),
+            "end": end.isoformat(),
+            "note": "Appointment was already booked for this slot.",
+        }
+
     event = (
         service.events()
         .insert(
@@ -87,15 +109,17 @@ def book_appointment(details: dict) -> dict:
         .execute()
     )
 
-    # Save appointment to database
-    Appointment.objects.create(
-        patient_name=details["patient_name"],
-        patient_phone=details["patient_phone"],
-        appointment_type=details["appointment_type"],
+    # Save appointment to database (prevent DB-level duplicates too)
+    Appointment.objects.get_or_create(
         date=details["date"],
         time=details["time"],
-        duration_minutes=duration,
-        google_event_id=event["id"],
+        patient_phone=details["patient_phone"],
+        defaults={
+            "patient_name": details["patient_name"],
+            "appointment_type": details["appointment_type"],
+            "duration_minutes": duration,
+            "google_event_id": event["id"],
+        },
     )
     logger.info(f"[BOOKED] {details['patient_name']} on {details['date']} at {details['time']}")
 

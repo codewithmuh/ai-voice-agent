@@ -255,6 +255,7 @@ railway up
 ```
 
 Set your environment variables in the Railway dashboard, then update the Vapi Custom LLM URL and Server URL to your Railway domain.
+![installtion thumbinil](https://github.com/user-attachments/assets/84b56fbb-16e1-4a95-9ee3-dcfc6b15b45f)
 
 ## License
 

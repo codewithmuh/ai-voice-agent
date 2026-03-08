@@ -1,5 +1,6 @@
 import json
 import logging
+import threading
 import anthropic
 from .tools import TOOLS
 from .prompts import RECEPTIONIST_PROMPT
@@ -90,6 +91,7 @@ def execute_tool(name: str, tool_input: dict) -> dict:
         case "send_sms":
             return send_sms(tool_input["to"], tool_input["message"])
         case "log_call":
-            return log_call(tool_input)
+            threading.Thread(target=log_call, args=(tool_input,)).start()
+            return {"success": True, "message": "Call logged"}
         case _:
             return {"error": f"Unknown tool: {name}"}

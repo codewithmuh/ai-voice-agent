@@ -22,13 +22,14 @@ def handle_conversation_turn(conversation_history: list, caller_phone: str = Non
 
     response = client.messages.create(
         model="claude-sonnet-4-20250514",
-        max_tokens=300,
+        max_tokens=1024,
         system=system_prompt,
         tools=TOOLS,
         messages=conversation_history,
     )
 
     should_end_call = False
+    last_tool_name = None
 
     while response.stop_reason == "tool_use":
         tool_block = next(
@@ -43,6 +44,7 @@ def handle_conversation_turn(conversation_history: list, caller_phone: str = Non
             should_end_call = True
             break
 
+        last_tool_name = tool_block.name
         logger.info(f"[TOOL] {tool_block.name} {json.dumps(tool_block.input)}")
         try:
             tool_result = execute_tool(tool_block.name, tool_block.input)
@@ -69,15 +71,25 @@ def handle_conversation_turn(conversation_history: list, caller_phone: str = Non
 
         response = client.messages.create(
             model="claude-sonnet-4-20250514",
-            max_tokens=300,
+            max_tokens=1024,
             system=system_prompt,
             tools=TOOLS,
             messages=conversation_history,
         )
 
     text_block = next((b for b in response.content if b.type == "text"), None)
+    response_text = text_block.text.strip() if text_block else ""
+
+    # Fallback: if Claude returned empty text after tools, provide a sensible response
+    if not response_text and last_tool_name:
+        logger.warning(f"[EMPTY RESPONSE] after tool={last_tool_name}, using fallback")
+        if last_tool_name in ("book_appointment", "send_sms"):
+            response_text = "You're all set! Your appointment is confirmed and I've sent you a text with the details. Is there anything else I can help with?"
+        else:
+            response_text = "Is there anything else I can help you with?"
+
     return {
-        "text": text_block.text if text_block else "",
+        "text": response_text,
         "end_call": should_end_call,
     }
 
@@ -89,7 +101,14 @@ def execute_tool(name: str, tool_input: dict) -> dict:
         case "book_appointment":
             return book_appointment(tool_input)
         case "send_sms":
-            return send_sms(tool_input["to"], tool_input["message"])
+            # Fire SMS in background to avoid blocking the voice response
+            # Twilio can take 5-10s which triggers VAPI idle timeout
+            threading.Thread(
+                target=send_sms,
+                args=(tool_input["to"], tool_input["message"]),
+                daemon=True,
+            ).start()
+            return {"success": True, "message": "SMS is being sent"}
         case "log_call":
             threading.Thread(target=log_call, args=(tool_input,)).start()
             return {"success": True, "message": "Call logged"}

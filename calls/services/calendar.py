@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 from django.conf import settings
 from googleapiclient.discovery import build
 from google.oauth2 import service_account
@@ -7,6 +8,7 @@ from google.oauth2 import service_account
 logger = logging.getLogger(__name__)
 
 SCOPES = ["https://www.googleapis.com/auth/calendar"]
+TIMEZONE = "Asia/Karachi"
 
 _calendar_service = None
 
@@ -29,17 +31,19 @@ def check_availability(date: str) -> dict:
     service = get_calendar_service()
     calendar_id = get_calendar_id()
 
-    start_of_day = f"{date}T08:00:00Z"
-    end_of_day = f"{date}T18:00:00Z"
+    tz = ZoneInfo(TIMEZONE)
+    start_of_day = datetime(int(date[:4]), int(date[5:7]), int(date[8:10]), 8, 0, tzinfo=tz)
+    end_of_day = datetime(int(date[:4]), int(date[5:7]), int(date[8:10]), 18, 0, tzinfo=tz)
 
     events = (
         service.events()
         .list(
             calendarId=calendar_id,
-            timeMin=start_of_day,
-            timeMax=end_of_day,
+            timeMin=start_of_day.isoformat(),
+            timeMax=end_of_day.isoformat(),
             singleEvents=True,
             orderBy="startTime",
+            timeZone=TIMEZONE,
         )
         .execute()
     )
@@ -52,7 +56,7 @@ def check_availability(date: str) -> dict:
     available = []
     for hour in range(8, 18):
         for minute in [0, 30]:
-            slot = datetime.fromisoformat(f"{date}T{hour:02d}:{minute:02d}:00")
+            slot = datetime(int(date[:4]), int(date[5:7]), int(date[8:10]), hour, minute, tzinfo=tz)
             is_busy = any(
                 datetime.fromisoformat(s) <= slot < datetime.fromisoformat(e)
                 for s, e in busy_slots
@@ -69,8 +73,11 @@ def book_appointment(details: dict) -> dict:
     service = get_calendar_service()
     calendar_id = get_calendar_id()
 
+    tz = ZoneInfo(TIMEZONE)
     duration = 60 if details["appointment_type"] == "new_patient" else 30
-    start = datetime.fromisoformat(f"{details['date']}T{details['time']}:00")
+    d = details['date']
+    t = details['time']
+    start = datetime(int(d[:4]), int(d[5:7]), int(d[8:10]), int(t[:2]), int(t[3:5]), tzinfo=tz)
     end = start + timedelta(minutes=duration)
 
     # Check for existing bookings at this slot to prevent duplicates
@@ -78,9 +85,10 @@ def book_appointment(details: dict) -> dict:
         service.events()
         .list(
             calendarId=calendar_id,
-            timeMin=start.isoformat() + "Z",
-            timeMax=end.isoformat() + "Z",
+            timeMin=start.isoformat(),
+            timeMax=end.isoformat(),
             singleEvents=True,
+            timeZone=TIMEZONE,
         )
         .execute()
     )
@@ -102,8 +110,8 @@ def book_appointment(details: dict) -> dict:
             body={
                 "summary": f"{details['appointment_type'].replace('_', ' ').title()} - {details['patient_name']}",
                 "description": f"Phone: {details['patient_phone']}\nType: {details['appointment_type']}",
-                "start": {"dateTime": start.isoformat(), "timeZone": "UTC"},
-                "end": {"dateTime": end.isoformat(), "timeZone": "UTC"},
+                "start": {"dateTime": start.isoformat(), "timeZone": TIMEZONE},
+                "end": {"dateTime": end.isoformat(), "timeZone": TIMEZONE},
             },
         )
         .execute()

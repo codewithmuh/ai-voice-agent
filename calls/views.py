@@ -193,7 +193,12 @@ def vapi_webhook(request):
         summary = message.get("summary", "")
         transcript = message.get("transcript", "")
         caller_phone = call.get("customer", {}).get("number", "unknown")
-        duration = call.get("duration")
+        # VAPI sends duration in different places depending on version
+        duration = call.get("duration") or message.get("durationSeconds") or message.get("duration")
+        # Also check cost breakdown
+        if not duration:
+            cost = message.get("costBreakdown", {})
+            duration = cost.get("duration") or cost.get("durationSeconds")
 
         logger.info(f"[CALL ENDED] id={call.get('id')} duration={duration}s phone={caller_phone}")
 

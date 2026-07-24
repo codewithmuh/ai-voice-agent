@@ -1,5 +1,7 @@
 # AI Voice Receptionist
 
+<p align="center"><a href="./README.md">English</a> · <a href="./README.zh-CN.md">简体中文</a> · <a href="./README.ja.md">日本語</a></p>
+
 [![GitHub Repo](https://img.shields.io/badge/GitHub-ai--voice--agent-blue?logo=github&style=for-the-badge)](https://github.com/codewithmuh/ai-voice-agent)
 [![Stars](https://img.shields.io/github/stars/codewithmuh/ai-voice-agent?style=for-the-badge&logo=github)](https://github.com/codewithmuh/ai-voice-agent/stargazers)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)

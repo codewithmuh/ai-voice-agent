@@ -1,60 +1,97 @@
-# AI Voice Receptionist
+# AI Voice Receptionist & Autonomous Appointment Booking Agent
 
-[![GitHub Repo](https://img.shields.io/badge/GitHub-ai--voice--agent-blue?logo=github&style=for-the-badge)](https://github.com/codewithmuh/ai-voice-agent)
-[![Stars](https://img.shields.io/github/stars/codewithmuh/ai-voice-agent?style=for-the-badge&logo=github)](https://github.com/codewithmuh/ai-voice-agent/stargazers)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
+An enterprise AI-powered phone receptionist that answers calls 24/7, checks real-time availability, books appointments on **Google Calendar**, and sends instant SMS confirmations via **Twilio** — powered by **Django**, **Claude AI (Anthropic)**, **Vapi**, and **PostgreSQL**.
 
-<img width="1352" height="813" alt="Screenshot 2026-03-05 at 3 09 41 AM" src="https://github.com/user-attachments/assets/8e631186-d932-4b36-bd09-c908c1e769a1" />
+[![Release](https://img.shields.io/github/v/release/codewithmuh/ai-voice-agent?style=flat-square&color=blue)](https://github.com/codewithmuh/ai-voice-agent/releases)
+[![Stars](https://img.shields.io/github/stars/codewithmuh/ai-voice-agent?style=flat-square&color=gold)](https://github.com/codewithmuh/ai-voice-agent/stargazers)
+[![Forks](https://img.shields.io/github/forks/codewithmuh/ai-voice-agent?style=flat-square&color=blueviolet)](https://github.com/codewithmuh/ai-voice-agent/network/members)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=flat-square)](LICENSE)
+[![Python](https://img.shields.io/badge/Python-3.11+-blue.svg?style=flat-square&logo=python)](https://python.org)
+[![Django](https://img.shields.io/badge/Django-5.0-092E20.svg?style=flat-square&logo=django)](https://djangoproject.com)
+[![Anthropic Claude](https://img.shields.io/badge/Claude-Anthropic%20API-d97706?style=flat-square)](https://anthropic.com)
+[![YouTube](https://img.shields.io/badge/YouTube-codewithmuh-red?style=flat-square&logo=youtube)](https://youtube.com/@codewithmuh)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Muhammad%20Rashid-blue?style=flat-square&logo=linkedin)](https://www.linkedin.com/in/muhammadrashid-daha/)
 
-An AI-powered phone receptionist that answers calls 24/7, books appointments on Google Calendar, and sends SMS confirmations — built with Django, Claude AI, Vapi, and PostgreSQL.
+<img width="1352" height="813" alt="AI Voice Receptionist Dashboard" src="https://github.com/user-attachments/assets/8e631186-d932-4b36-bd09-c908c1e769a1" />
 
-## What It Does
+---
 
-- Answers incoming phone calls with a natural-sounding AI voice
-- Checks Google Calendar availability in real time
-- Books appointments and creates calendar events
-- Sends SMS confirmations via Twilio
-- Logs every call and appointment to PostgreSQL with a Django admin dashboard
+## 📑 Table of Contents
+- [What It Does](#what-it-does)
+- [Architecture & Call Flow](#architecture)
+- [Tech Stack](#tech-stack)
+- [Quick Start Guide](#quick-start)
+  - [1. Clone and Configure](#1-clone-and-configure)
+  - [2. Generate Secret Key](#2-generate-a-django-secret-key)
+  - [3. Configure Environment Variables](#3-add-your-api-keys-to-env)
+  - [4. Google Calendar Setup](#4-google-calendar-setup)
+  - [5. Run with Docker Compose](#5-start-with-docker-compose)
+  - [6. Expose Local Webhook (ngrok)](#8-expose-with-ngrok)
+  - [7. Connect Vapi Voice Pipeline](#9-connect-vapi)
+- [Project Layout & Endpoints](#project-structure)
+- [Django Admin & Telemetry](#django-admin)
+- [Production Deployment](#deploy-to-production)
+- [Author & Community](#author)
+- [License](#license)
 
-## Tech Stack
+---
 
-| Component | Role |
-|-----------|------|
-| **Django** | Backend brain — hosts Claude AI, tools, prompts, admin panel |
-| **Claude API (Anthropic)** | AI conversation engine — processes speech, decides actions, calls tools |
-| **Vapi** | Voice pipe — phone numbers, speech-to-text, text-to-speech only |
-| **PostgreSQL** | Call logs and appointment records |
-| **Google Calendar API** | Appointment availability and booking |
-| **Twilio** | SMS confirmations |
+## 🌟 What It Does
 
-## Architecture
+- 📞 **24/7 Inbound Voice Calls**: Answers phone calls with ultra-low latency, human-like voice synthesis.
+- 📅 **Real-Time Calendar Sync**: Dynamically checks Google Calendar for conflict-free availability.
+- ⚡ **Autonomous Booking**: Locks in appointments and auto-generates Google Calendar events.
+- 📱 **Instant SMS Verification**: Dispatches booking confirmations and reminders via Twilio SMS.
+- 📊 **Audit & Call Logs**: Persists full call transcripts, duration, summaries, and patient data into PostgreSQL.
 
-Vapi is used **only** as a voice transport layer (STT/TTS). All AI logic, tools, and prompts live in Django.
+---
 
+## 🏛️ Architecture
+
+Vapi is leveraged as the voice transport layer (Speech-to-Text and Text-to-Speech), while the Django backend acts as the autonomous decision brain driving Claude AI function calling and tool execution.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Caller as 👤 Caller
+    participant Vapi as 🎙️ Vapi (STT/TTS)
+    participant Django as 🐍 Django Backend
+    participant Claude as 🤖 Claude AI (Anthropic)
+    participant GCal as 📅 Google Calendar
+    participant Twilio as 💬 Twilio SMS
+    participant DB as 🗄️ PostgreSQL
+
+    Caller->>Vapi: Speaks ("I want to book an appointment")
+    Vapi->>Django: POST /api/vapi/chat/completions/ (Transcript)
+    Django->>Claude: Prompt + Tool Definitions + History
+    Claude-->>Django: Tool Call: check_calendar_availability
+    Django->>GCal: Query busy/free slots
+    GCal-->>Django: Available slots returned
+    Django->>Claude: Tool Response (Slots)
+    Claude-->>Django: Natural Voice Response
+    Django->>DB: Log conversation turns
+    Django-->>Vapi: Synthesized Text Reply
+    Vapi-->>Caller: Speaks response back to caller
+    Note over Caller,DB: Once confirmed: GCal Event Created & Twilio SMS Sent!
 ```
-[Phone Call] → [Vapi: STT only] → [Django Custom LLM Endpoint]
-                                          ↓
-                                   [Claude AI + Tools]
-                                    ↙     ↓      ↘
-                            [Google Cal] [Twilio] [PostgreSQL]
-                                          ↓
-                                   [Django Response]
-                                          ↓
-                              [Vapi: TTS only] → [Caller hears response]
-```
 
-<img width="1487" height="814" alt="Screenshot 2026-03-05 at 3 11 53 AM" src="https://github.com/user-attachments/assets/7881f037-323b-4f09-b3ae-81ac2b04601d" />
+---
 
-### How It Works
+## 🛠️ Tech Stack
 
-1. Caller dials the phone number (via Vapi)
-2. Vapi converts speech to text and sends it to Django's `/api/vapi/chat/completions/` endpoint
-3. Django calls Claude API with the system prompt and tool definitions
-4. Claude decides what to do — check calendar, book appointment, send SMS, etc.
-5. Django executes tools locally and returns the final response to Vapi
-6. Vapi converts the text response back to speech for the caller
+| Component | Technology | Purpose |
+|---|---|---|
+| **Backend Core** | Django 5.0, DRF | Application server, tool orchestration, admin interface |
+| **LLM & Reasoning** | Claude API (Anthropic) | Context understanding, conversation flow, agentic tool execution |
+| **Voice Transport** | Vapi AI | Telephony integration, real-time STT (Deepgram) & TTS (ElevenLabs/PlayHT) |
+| **Database** | PostgreSQL 16 | Relational storage for call logs, appointments, and audit trails |
+| **Calendar API** | Google Calendar API v3 | Service-account-driven schedule queries and event creations |
+| **Messaging** | Twilio SMS API | Automated booking confirmations sent directly to callers |
+| **Containerization** | Docker & Docker Compose | Multi-container local orchestration |
 
-## Quick Start
+---
+
+## 🚀 Quick Start
 
 ### 1. Clone and configure
 
@@ -70,11 +107,11 @@ cp .env.example .env
 python3 -c "import secrets; print(secrets.token_urlsafe(50))"
 ```
 
-Paste the output into your `.env` file as the `SECRET_KEY` value.
+Paste the output into `.env` as the `SECRET_KEY` value.
 
 ### 3. Add your API keys to `.env`
 
-```
+```ini
 SECRET_KEY=your-generated-secret-key
 DEBUG=True
 ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0,*
@@ -97,44 +134,34 @@ TWILIO_PHONE_NUMBER=+1...
 **Where to get keys:**
 - **Anthropic:** [console.anthropic.com](https://console.anthropic.com)
 - **Vapi:** [dashboard.vapi.ai](https://dashboard.vapi.ai)
-- **Google Calendar:** See detailed setup below
 - **Twilio:** [twilio.com/console](https://www.twilio.com/console)
+- **Google Calendar:** Follow setup below
+
+---
 
 ### 4. Google Calendar setup
 
 #### Step 1: Create a Google Cloud project
-1. Go to [Google Cloud Console](https://console.cloud.google.com)
-2. Click **Select a Project** → **New Project** → name it → **Create**
+1. Go to [Google Cloud Console](https://console.cloud.google.com).
+2. Click **Select a Project** → **New Project** → Name it → **Create**.
 
 #### Step 2: Enable the Calendar API
-1. Go to **APIs & Services** → **Library**
-2. Search for **"Google Calendar API"** → click it → **Enable**
+1. Go to **APIs & Services** → **Library**.
+2. Search for **"Google Calendar API"** → Click **Enable**.
 
-#### Step 3: Create service account credentials
-1. Go to **APIs & Services** → **Credentials**
-2. Click **+ Create Credentials** → **Service Account**
-3. Name it (e.g., "calendar-bot") → **Create and Continue** → skip optional steps → **Done**
-4. Click on the newly created service account → **Keys** tab → **Add Key** → **Create New Key** → **JSON** → **Create**
-5. A `.json` file will download — move it to your project root:
+#### Step 3: Create Service Account Credentials
+1. Go to **APIs & Services** → **Credentials**.
+2. Click **+ Create Credentials** → **Service Account**.
+3. Name it (e.g. `calendar-bot`) → **Create and Continue** → **Done**.
+4. Click the newly created service account → **Keys** tab → **Add Key** → **Create New Key** → **JSON**.
+5. Save the file in the project root as `google-calendar-credentials.json`.
 
-```bash
-mv ~/Downloads/your-downloaded-file.json ./google-calendar-credentials.json
-```
+#### Step 4: Share Calendar with Service Account
+1. Copy the `client_email` from `google-calendar-credentials.json` (e.g. `calendar-bot@project.iam.gserviceaccount.com`).
+2. In [Google Calendar](https://calendar.google.com), click your calendar settings → **Share with specific people or groups**.
+3. Add the service account email and give permission: **Make changes to events**.
 
-#### Step 4: Get your Calendar ID
-1. Open [Google Calendar](https://calendar.google.com)
-2. Click the **gear icon** in the top-right → **Settings**
-3. Under **Settings for my calendars** on the left, click the calendar you want
-4. Click **Integrate calendar** — the **Calendar ID** is displayed there
-5. For your default calendar, the Calendar ID is simply your Gmail address (e.g., `you@gmail.com`)
-
-#### Step 5: Share calendar with service account
-1. Open the downloaded JSON file and copy the `client_email` value (looks like `calendar-bot@your-project.iam.gserviceaccount.com`)
-2. In Google Calendar → **Settings and sharing** for your calendar
-3. Under **Share with specific people or groups** → **+ Add people and groups**
-4. Paste the service account email → set permission to **Make changes to events** → **Send**
-
-> **Tip:** Use the same Google account for both Google Cloud and Google Calendar to keep things simple.
+---
 
 ### 5. Start with Docker Compose
 
@@ -142,121 +169,108 @@ mv ~/Downloads/your-downloaded-file.json ./google-calendar-credentials.json
 docker compose up --build
 ```
 
-This starts Django on `http://localhost:8000` and PostgreSQL on port 5432.
+Django will start at `http://localhost:8000` with PostgreSQL connected.
 
-### 6. Run migrations and create admin user
-
-Migrations run automatically on container start. To create a Django admin superuser:
+### 6. Create Superuser for Admin Dashboard
 
 ```bash
 docker compose exec web python manage.py createsuperuser
 ```
 
-### 7. Verify it works
-
-```bash
-# Test the webhook endpoint
-curl http://localhost:8000/api/vapi/webhook/
-# Returns: {"status": "ok", "service": "AI Voice Receptionist"}
-
-# Test the custom LLM endpoint
-curl -X POST http://localhost:8000/api/vapi/chat/completions/ \
-  -H "Content-Type: application/json" \
-  -d '{"messages":[{"role":"user","content":"Hi, I want to book an appointment"}]}'
-# Returns an OpenAI-format response with Claude's reply
-```
-
-### 8. Expose with ngrok
-
-Install ngrok if you don't have it:
-
-```bash
-# macOS
-brew install ngrok
-
-# Or download from https://ngrok.com/download
-```
-
-Start the tunnel:
+### 7. Expose with ngrok
 
 ```bash
 ngrok http 8000
 ```
 
-Copy the `https://...ngrok-free.app` URL from the output.
+Copy the forwarding HTTPS URL (`https://xxxx.ngrok-free.app`).
 
-### 9. Connect Vapi
+### 8. Connect Vapi
 
-1. Go to [Vapi Dashboard](https://dashboard.vapi.ai)
-2. Create an Assistant
-3. Set the **Model** to `Custom LLM` with the URL:
+1. Go to [Vapi Dashboard](https://dashboard.vapi.ai).
+2. Create an Assistant → Set **Model** to **Custom LLM**:
    ```
-   https://your-ngrok-url.ngrok-free.app/api/vapi/chat/completions/
+   https://xxxx.ngrok-free.app/api/vapi/chat/completions/
    ```
-4. Set the **Server URL** (for end-of-call reports) to:
+3. Set **Server URL** (for post-call summary webhooks):
    ```
-   https://your-ngrok-url.ngrok-free.app/api/vapi/webhook/
+   https://xxxx.ngrok-free.app/api/vapi/webhook/
    ```
-5. Buy or import a phone number and assign it to the assistant
-6. Call the number to test (or use the web call button in the Vapi dashboard)
+4. Assign a phone number and dial to test!
 
-> **Important:** The Custom LLM URL is where Vapi sends conversation messages. Django calls Claude, runs tools, and returns the response. Vapi only handles voice (STT/TTS).
+---
 
-## Project Structure
+## 📂 Project Structure
 
 ```
 ai-voice-agent/
 ├── receptionist_project/
 │   ├── settings.py              # Django config
-│   └── urls.py                  # URL routing
+│   └── urls.py                  # Root URL routing
 ├── calls/
-│   ├── models.py                # CallLog + Appointment models
-│   ├── views.py                 # Custom LLM endpoint + Vapi webhook
-│   ├── urls.py                  # API routes
+│   ├── models.py                # CallLog & Appointment schema
+│   ├── views.py                 # Custom LLM & Vapi webhook endpoints
+│   ├── urls.py                  # API route definitions
 │   ├── admin.py                 # Django admin registration
 │   ├── agent/
-│   │   ├── receptionist.py      # Claude agentic loop (the brain)
-│   │   ├── tools.py             # Tool definitions (calendar, SMS, DB)
-│   │   └── prompts.py           # System prompt (Bright Smile Dental)
+│   │   ├── receptionist.py      # Claude agentic loop orchestrator
+│   │   ├── tools.py             # Tool schemas (Calendar, SMS, DB)
+│   │   └── prompts.py           # Domain system prompt
 │   └── services/
-│       ├── calendar.py          # Google Calendar API
-│       ├── sms.py               # Twilio SMS
-│       └── database.py          # Call logging
+│       ├── calendar.py          # Google Calendar API integration
+│       ├── sms.py               # Twilio SMS client
+│       └── database.py          # Database operations
 ├── docker-compose.yml
 ├── Dockerfile
 ├── .env.example
 └── requirements.txt
 ```
 
-### Key Endpoints
+### Key API Endpoints
 
-| Endpoint | Purpose |
-|----------|---------|
-| `POST /api/vapi/chat/completions/` | Custom LLM — receives messages from Vapi, calls Claude + tools, returns response |
-| `POST /api/vapi/webhook/` | Webhook — receives end-of-call reports, logs calls to DB |
-| `GET /api/vapi/webhook/` | Health check |
+| Endpoint | Method | Description |
+|---|---|---|
+| `/api/vapi/chat/completions/` | `POST` | Custom LLM bridge connecting Vapi voice requests to Claude |
+| `/api/vapi/webhook/` | `POST` | Receives end-of-call telemetry, saving summaries to DB |
+| `/api/vapi/webhook/` | `GET` | Health check endpoint |
 
-## Django Admin
+---
 
-Access the admin panel at `http://localhost:8000/admin/` to:
-- View all call logs (caller phone, duration, summary, timestamp)
-- View all booked appointments (patient name, date, time, type)
-- Filter calls by date and booking status
-- Filter appointments by type and date
-- Search by phone number or patient name
+## 🖥️ Django Admin Dashboard
 
-## Deploy to Production
+Access the admin dashboard at `http://localhost:8000/admin/`:
+- **Call Records**: Full transcripts, duration, caller phone numbers, and LLM sentiment.
+- **Appointments**: View, modify, or cancel bookings synced with Google Calendar.
+- **Filters**: Quickly filter calls and appointments by date, status, and patient name.
+
+---
+
+## 🚢 Deploy to Production
+
+Deploy easily on platforms like Railway, AWS EC2, or Render:
 
 ```bash
-# Railway
+# Example with Railway CLI
 railway init
 railway add --plugin postgresql
 railway up
 ```
 
-Set your environment variables in the Railway dashboard, then update the Vapi Custom LLM URL and Server URL to your Railway domain.
-![installtion thumbinil](https://github.com/user-attachments/assets/84b56fbb-16e1-4a95-9ee3-dcfc6b15b45f)
+Set environment variables in your cloud provider's dashboard and update the Vapi webhook URLs accordingly.
 
-## License
+---
 
-MIT
+## 👨‍💻 Author
+
+**Muhammad Rashid** — AI & DevOps Engineer, AWS Community Builder.  
+- 🎥 **YouTube:** [@codewithmuh](https://youtube.com/@codewithmuh)  
+- 💼 **LinkedIn:** [Muhammad Rashid](https://www.linkedin.com/in/muhammadrashid-daha/)  
+- 🌐 **Website:** [codewithmuh.com](https://codewithmuh.com) · [devopsbymuh.com](https://devopsbymuh.com)
+
+⭐ **If you find this AI Voice Agent helpful, please give it a star!**
+
+---
+
+## 📄 License
+
+This project is licensed under the [MIT License](LICENSE).

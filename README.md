@@ -5,12 +5,13 @@ An enterprise AI-powered phone receptionist that answers calls 24/7, checks real
 [![Release](https://img.shields.io/github/v/release/codewithmuh/ai-voice-agent?style=flat-square&color=blue)](https://github.com/codewithmuh/ai-voice-agent/releases)
 [![Stars](https://img.shields.io/github/stars/codewithmuh/ai-voice-agent?style=flat-square&color=gold)](https://github.com/codewithmuh/ai-voice-agent/stargazers)
 [![Forks](https://img.shields.io/github/forks/codewithmuh/ai-voice-agent?style=flat-square&color=blueviolet)](https://github.com/codewithmuh/ai-voice-agent/network/members)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=flat-square)](LICENSE)
-[![Python](https://img.shields.io/badge/Python-3.11+-blue.svg?style=flat-square&logo=python)](https://python.org)
-[![Django](https://img.shields.io/badge/Django-5.0-092E20.svg?style=flat-square&logo=django)](https://djangoproject.com)
-[![Anthropic Claude](https://img.shields.io/badge/Claude-Anthropic%20API-d97706?style=flat-square)](https://anthropic.com)
-[![YouTube](https://img.shields.io/badge/YouTube-codewithmuh-red?style=flat-square&logo=youtube)](https://youtube.com/@codewithmuh)
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-Muhammad%20Rashid-blue?style=flat-square&logo=linkedin)](https://www.linkedin.com/in/muhammadrashid-daha/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/codewithmuh/ai-voice-agent?color=blue&logo=github)](https://github.com/codewithmuh/ai-voice-agent/releases)
+[![Community Standards](https://img.shields.io/badge/Community%20Standards-100%25-brightgreen.svg?logo=github)](https://github.com/codewithmuh/ai-voice-agent/community)
+[![Security: Gitleaks](https://img.shields.io/badge/Security-Gitleaks%20Active-blue.svg?logo=githubactions&logoColor=white)](.github/workflows/security.yml)
+[![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![Anthropic Claude](https://img.shields.io/badge/Claude%203.5-Anthropic-black?logo=anthropic&logoColor=white)](https://www.anthropic.com/)
+[![Twilio](https://img.shields.io/badge/Twilio-Voice%20WebSockets-F22F46?logo=twilio&logoColor=white)](https://www.twilio.com/)
 
 <img width="1352" height="813" alt="AI Voice Receptionist Dashboard" src="https://github.com/user-attachments/assets/8e631186-d932-4b36-bd09-c908c1e769a1" />
 
